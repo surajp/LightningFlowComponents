@@ -1,3 +1,10 @@
+/************************************************************
+
+*** @date 06/2021
+*** @description Invocable action to convert data from a CSV file to records of an SObject with matching fields. 
+*** 
+**/
+
 public with sharing class ConvertCSVToRecords {
   @InvocableMethod(label='Convert CSV File to Records')
   public static Response[] convert(Request[] inputs) {
@@ -16,21 +23,13 @@ public with sharing class ConvertCSVToRecords {
           curInput.contentDocumentIdList.add(curInput.contentDocumentId);
       }
       for (String curContentDocumentId : curInput.contentDocumentIdList) {
-        SObjectType sObjType = ((SObject) Type.forName(curInput.objectApiName).newInstance()).getSObjectType();
-        map<String, SObjectField> fieldMap = sObjType.getDescribe().fields.getMap();
-
-        Blob csvBlobContent = getCsvContent(curContentDocumentId);
-        String csvStringContent = blobToString(csvBlobContent, 'ISO-8859-1');
-        csvStringContent = csvStringContent.replaceAll('(\r\n|\r)', '\n');
-
+        String csvStringContent = getCSVStringContent(curContentDocumentId);
         String[] csvRows = csvStringContent.split('\n');
-        String[] fields = csvRows[0].split(','); //Gives all the API names of the fields from the 1st CSV row
-        csvRows.remove(0);
-        map<String, Schema.DisplayType> fieldToFieldTypeMap = new Map<String, Schema.DisplayType>();
-        for (String field : fields) {
-          fieldToFieldTypeMap.put(field, getFieldType(fieldMap, field));
-        }
+        String[] fields = csvRows.remove(0).split(','); //Gives all the API names of the fields from the 1st CSV row
+        Map<String, Schema.DisplayType> fieldToFieldTypeMap = new Map<String, Schema.DisplayType>();
 
+        SObjectType sObjType = getSObjectType(curInput.objectApiName);
+        initFieldTypeMap(sObjType, fields, fieldToFieldTypeMap);
         Response output = new Response();
         output.convertedCSVRows = new List<SObject>{};
         for (String row : csvRows) {
@@ -38,10 +37,10 @@ public with sharing class ConvertCSVToRecords {
           CSVColIterator currentRow = new CSVColIterator(row);
           Integer i = 0;
           while (currentRow.hasNext()) {
-            String currentCol = currentRow.next();
-            Schema.DisplayType fieldType = fieldToFieldTypeMap.get(fields[i]);
-            obj.put(fields[i], getConvertedFieldValue(fieldType, currentCol));
-            i++;
+            String currentColValue = currentRow.next().trim();
+            String currentField = fields[i++];
+            Schema.DisplayType currFieldType = fieldToFieldTypeMap.get(currentField);
+            setSObjectField(obj, currentField, currFieldType, currentColValue, curInput.setNullValues);
           }
 
           output.convertedCSVRows.add(obj);
@@ -50,6 +49,43 @@ public with sharing class ConvertCSVToRecords {
       }
     }
     return responseList;
+  }
+
+  private static SObjectType getSObjectType(String objectApiName) {
+    return ((SObject) Type.forName(objectApiName).newInstance()).getSObjectType();
+  }
+
+  private static String getCSVStringContent(Id curContentDocumentId) {
+    Blob csvBlobContent = getCsvContent(curContentDocumentId);
+    String csvStringContent = blobToString(csvBlobContent);
+    return csvStringContent.replaceAll('(\r\n|\r)', '\n');
+  }
+
+  private static void initFieldTypeMap(
+    SObjectType sObjType,
+    List<String> fieldNames,
+    Map<String, SChema.DisplayType> fieldToFieldTypeMap
+  ) {
+    Map<String, SObjectField> fieldMap = sObjType.getDescribe().fields.getMap();
+
+    for (String field : fieldNames) {
+      fieldToFieldTypeMap.put(field, getFieldType(fieldMap, field));
+    }
+  }
+
+  private static void setSObjectField(
+    SObject obj,
+    String fieldName,
+    Schema.DisplayType fieldType,
+    String value,
+    Boolean setNull
+  ) {
+    if (String.isBlank(value)) {
+      if (setNull)
+        obj.put(fieldName, null);
+    } else {
+      obj.put(fieldName, getConvertedFieldValue(fieldType, value));
+    }
   }
 
   static Blob getCsvContent(String contentDocumentId) {
@@ -66,6 +102,7 @@ public with sharing class ConvertCSVToRecords {
   static String blobToString(Blob input) {
     return input.toString();
   }
+
   /* Converting the CSV file input(BLOB format) to a string */
   static String blobToString(Blob input, String inCharset) {
     String hex = EncodingUtil.convertToHex(input);
@@ -101,7 +138,7 @@ public with sharing class ConvertCSVToRecords {
   }
 
   @TestVisible
-  static Schema.DisplayType getFieldType(map<String, SObjectField> fieldMap, String fieldApiName) {
+  static Schema.DisplayType getFieldType(Map<String, SObjectField> fieldMap, String fieldApiName) {
     if (fieldMap.get(fieldApiName) == null) {
       throw new FlowCustomException(
         'Invalid Field Error: ' +
@@ -124,6 +161,9 @@ public with sharing class ConvertCSVToRecords {
 
     @InvocableVariable(label='List of CSV File IDs')
     public List<String> contentDocumentIdList;
+
+    @InvocableVariable(label='Set Nulls')
+    public Boolean setNullValues;
   }
 
   public class Response {
