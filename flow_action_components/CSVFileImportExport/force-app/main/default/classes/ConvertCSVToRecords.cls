@@ -6,6 +6,8 @@
 **/
 
 public with sharing class ConvertCSVToRecords {
+  private static Map<SObjectType, Map<String, Schema.SObjectField>> sobjFieldsMap = new Map<SObjectType, Map<String, Schema.SObjectField>>();
+
   @InvocableMethod(label='Convert CSV File to Records')
   public static Response[] convert(Request[] inputs) {
     Response[] responseList = new List<Response>{};
@@ -22,23 +24,32 @@ public with sharing class ConvertCSVToRecords {
         if (curInput.contentDocumentId != null)
           curInput.contentDocumentIdList.add(curInput.contentDocumentId);
       }
+
       for (String curContentDocumentId : curInput.contentDocumentIdList) {
         String csvStringContent = getCSVStringContent(curContentDocumentId);
-        String[] csvRows = csvStringContent.split('\n');
-        String[] fields = csvRows.remove(0).split(','); //Gives all the API names of the fields from the 1st CSV row
-        Map<String, Schema.DisplayType> fieldToFieldTypeMap = new Map<String, Schema.DisplayType>();
+        String headerRow = csvStringContent.substring(0, csvStringContent.indexOf('\n'));
+        String[] fields = headerRow.split(','); //Gives all the API names of the fields from the 1st CSV row
 
+        Map<String, Schema.DisplayType> fieldToFieldTypeMap = new Map<String, Schema.DisplayType>();
         SObjectType sObjType = getSObjectType(curInput.objectApiName);
         initFieldTypeMap(sObjType, fields, fieldToFieldTypeMap);
+
         Response output = new Response();
         output.convertedCSVRows = new List<SObject>{};
-        for (String row : csvRows) {
+        CSVColIterator rowIterator = new CSVColIterator(csvStringContent).setColDelimiter('\n');
+        rowIterator.next(); //skip header row
+        while (rowIterator.hasNext()) {
+          String row = rowIterator.next();
+          if (String.isBlank(row)) {
+            continue;
+          }
+          System.debug('>>> row ' + row);
           SObject obj = sObjType.newSObject();
-          CSVColIterator currentRow = new CSVColIterator(row);
-          Integer i = 0;
-          while (currentRow.hasNext()) {
-            String currentColValue = currentRow.next().trim();
-            String currentField = fields[i++];
+          CSVColIterator colIterator = new CSVColIterator(row);
+          Integer colIndex = 0;
+          while (colIterator.hasNext()) {
+            String currentColValue = colIterator.next().trim();
+            String currentField = fields[colIndex++];
             Schema.DisplayType currFieldType = fieldToFieldTypeMap.get(currentField);
             setSObjectField(obj, currentField, currFieldType, currentColValue, curInput.setNullValues);
           }
@@ -49,6 +60,19 @@ public with sharing class ConvertCSVToRecords {
       }
     }
     return responseList;
+  }
+
+  private static List<Id> getContentDocIds(List<Request> inputs) {
+    List<Id> contentDocIds = new List<Id>();
+    for (Request req : inputs) {
+      if (req.ContentDocumentIdList != null) {
+        contentDocIds.addAll(req.ContentDocumentIdList);
+      }
+      if (req.ContentDocumentId != null) {
+        contentDocIds.add(req.ContentDocumentId);
+      }
+    }
+    return contentDocIds;
   }
 
   private static SObjectType getSObjectType(String objectApiName) {
@@ -66,8 +90,11 @@ public with sharing class ConvertCSVToRecords {
     List<String> fieldNames,
     Map<String, SChema.DisplayType> fieldToFieldTypeMap
   ) {
-    Map<String, SObjectField> fieldMap = sObjType.getDescribe().fields.getMap();
-
+    Map<String, SObjectField> fieldMap = sobjFieldsMap.get(sObjType);
+    if (fieldMap == null) {
+      fieldMap = sObjType.getDescribe().fields.getMap();
+      sobjFieldsMap.put(sObjType, fieldMap);
+    }
     for (String field : fieldNames) {
       fieldToFieldTypeMap.put(field, getFieldType(fieldMap, field));
     }

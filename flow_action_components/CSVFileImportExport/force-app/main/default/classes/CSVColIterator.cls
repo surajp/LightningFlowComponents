@@ -10,6 +10,8 @@ public class CSVColIterator implements Iterator<String> {
   private String textQualifier = '"';
   private String row = '';
   private Integer rowLength = 0;
+  private Integer delimiterLength = 1;
+  private Integer qualifierLength = 1;
   private Integer currentIndex = -1;
   private Boolean rowEndsWithDelimiter = false; //Does the row end with a delimiter i.e. is the last column blank?
 
@@ -36,6 +38,7 @@ public class CSVColIterator implements Iterator<String> {
   public CSVColIterator setColDelimiter(String delimiter) {
     this.colDelimiter = delimiter;
     this.checkIfRowEndsWithDelimiter();
+    this.delimiterLength = delimiter.length();
     return this;
   }
 
@@ -46,6 +49,7 @@ public class CSVColIterator implements Iterator<String> {
    **/
   public CSVColIterator setTextQualifier(String textQualifier) {
     this.textQualifier = textQualifier;
+    this.qualifierLength = textQualifier.length();
     return this;
   }
 
@@ -62,13 +66,13 @@ public class CSVColIterator implements Iterator<String> {
   }
 
   private Integer getPositionOfNextColDelimiter() {
-    return this.row.indexOf(colDelimiter, currentIndex);
+    return this.row.indexOf(colDelimiter, this.currentIndex + 1);
   }
 
   private String nextToken(String token) {
     Integer qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
     Integer colDelimIndex = this.row.indexOf(this.colDelimiter, this.currentIndex + 1);
-    if (this.currentIndex == this.rowLength - 1) {
+    if (this.isLastChar()) {
       this.currentIndex++;
       return token;
     } else if (colDelimIndex == -1) {
@@ -78,14 +82,14 @@ public class CSVColIterator implements Iterator<String> {
     }
     if (qualifierIndex > -1 && qualifierIndex < colDelimIndex) {
       token += this.row.substring(this.currentIndex + 1, qualifierIndex);
-      this.currentIndex = qualifierIndex;
+      this.currentIndex = qualifierIndex + this.qualifierLength - 1;
       qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
       token += this.row.substring(this.currentIndex + 1, qualifierIndex);
-      this.currentIndex = qualifierIndex;
+      this.currentIndex = qualifierIndex + this.qualifierLength - 1;
       return this.nextToken(token);
     }
     token += this.row.substring(this.currentIndex + 1, colDelimIndex);
-    this.currentIndex = colDelimIndex;
+    this.currentIndex = colDelimIndex + this.delimiterLength - 1;
     return token;
   }
 
