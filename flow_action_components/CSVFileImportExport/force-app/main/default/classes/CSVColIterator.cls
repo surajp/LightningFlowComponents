@@ -69,20 +69,21 @@ public class CSVColIterator implements Iterator<String> {
     Integer qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
     Integer colDelimIndex = this.row.indexOf(this.colDelimiter, this.currentIndex + 1);
     if (colDelimIndex == -1) {
-      return this.row.substring(this.currentIndex + 1);
+      token += this.row.substring(this.currentIndex + 1);
+      this.currentIndex = this.row.length();
+      return token;
     }
     if (qualifierIndex > -1 && qualifierIndex < colDelimIndex) {
-      Integer newCurrentIndex = this.currentIndex + qualifierIndex;
-      token += this.row.substring(this.currentIndex + 1, newCurrentIndex);
-      this.currentIndex = newCurrentIndex;
-      qualifierIndex = this.row.indexOf(this.textQualifier, newCurrentIndex + 1);
-      newCurrentIndex = this.currentIndex + qualifierIndex;
-      token += this.row.substring(this.currentIndex + 1, newCurrentIndex);
-      this.currentIndex = newCurrentIndex;
+      token += this.row.substring(this.currentIndex + 1, qualifierIndex);
+      this.currentIndex = qualifierIndex + 1;
+      qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
+      token += this.row.substring(this.currentIndex + 1, qualifierIndex);
+      this.currentIndex = qualifierIndex + 1;
       return this.nextToken(token);
     }
-    this.currentIndex = this.currentIndex + colDelimIndex;
-    return this.row.substring(this.currentIndex + 1, colDelimIndex);
+    token += this.row.substring(this.currentIndex + 1, colDelimIndex);
+    this.currentIndex = colDelimIndex;
+    return token;
   }
 
   public String next() {
