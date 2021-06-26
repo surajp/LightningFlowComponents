@@ -10,7 +10,7 @@ public class CSVColIterator implements Iterator<String> {
   private String textQualifier = '"';
   private String row = '';
   private Integer rowLength = 0;
-  private Integer currentIndex = 0;
+  private Integer currentIndex = -1;
   private Boolean rowEndsWithDelimiter = false; //Does the row end with a delimiter i.e. is the last column blank?
 
   public CSVColIterator(String row) {
@@ -24,7 +24,8 @@ public class CSVColIterator implements Iterator<String> {
   }
 
   public Boolean hasNext() {
-    return currentIndex < row.length() || (this.isLastChar() && this.rowEndsWithDelimiter);
+    System.debug('>> currIndex ' + this.currentIndex);
+    return currentIndex < this.rowLength || (this.isLastChar() && this.rowEndsWithDelimiter);
   }
 
   /****
@@ -53,7 +54,7 @@ public class CSVColIterator implements Iterator<String> {
   }
 
   private Boolean isLastChar() {
-    return this.currentIndex == this.rowLength;
+    return this.currentIndex == this.rowLength - 1;
   }
 
   private Integer getPositionOfNextTextQualifier() {
@@ -64,23 +65,37 @@ public class CSVColIterator implements Iterator<String> {
     return this.row.indexOf(colDelimiter, currentIndex);
   }
 
+  private String nextToken(String token) {
+    Integer qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
+    Integer colDelimIndex = this.row.indexOf(this.colDelimiter, this.currentIndex + 1);
+    if (this.currentIndex == this.rowLength - 1) {
+      this.currentIndex++;
+      return token;
+    } else if (colDelimIndex == -1) {
+      token += this.row.substring(this.currentIndex + 1);
+      this.currentIndex = this.rowLength;
+      return token;
+    }
+    if (qualifierIndex > -1 && qualifierIndex < colDelimIndex) {
+      token += this.row.substring(this.currentIndex + 1, qualifierIndex);
+      this.currentIndex = qualifierIndex;
+      qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
+      token += this.row.substring(this.currentIndex + 1, qualifierIndex);
+      this.currentIndex = qualifierIndex;
+      return this.nextToken(token);
+    }
+    token += this.row.substring(this.currentIndex + 1, colDelimIndex);
+    this.currentIndex = colDelimIndex;
+    return token;
+  }
+
   public String next() {
     String token = '';
     if (this.isLastChar()) {
       // indicates that the row ends with a delimiter (comma) and last column is blank
       this.currentIndex++;
-    } else if (this.currentChar() == this.textQualifier) {
-      Integer key = this.getPositionOfNextTextQualifier();
-      token = this.row.substring(this.currentIndex + 1, key); //read column value
-      this.currentIndex = key + 2;
     } else {
-      Integer key = this.getPositionOfNextColDelimiter();
-      if (key == -1) {
-        //we are at the end of the row and there are no more column delimiters
-        key = row.length();
-      }
-      token = row.substring(currentIndex, key); //read column value
-      this.currentIndex = key + 1;
+      token = this.nextToken('');
     }
     return token;
   }
