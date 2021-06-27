@@ -27,7 +27,6 @@ public class CSVColIterator implements Iterator<String> {
   }
 
   public Boolean hasNext() {
-    System.debug('>> currIndex ' + this.currentIndex);
     return currentIndex < this.rowLength || (this.isLastChar() && this.rowEndsWithDelimiter);
   }
 
@@ -67,54 +66,62 @@ public class CSVColIterator implements Iterator<String> {
     return this.currentIndex == this.rowLength - 1;
   }
 
-  private Integer getPositionOfNextTextQualifier() {
-    return this.row.indexOf(this.textQualifier, this.currentIndex + 1);
+  private Integer getPositionOfNextTextQualifierAfter(Integer startIndex) {
+    return this.row.indexOf(this.textQualifier, startIndex + 1);
   }
 
-  private Integer getPositionOfNextColDelimiter() {
-    return this.row.indexOf(colDelimiter, this.currentIndex + 1);
+  private Integer getPositionOfNextColDelimiterAfter(integer startIndex) {
+    return this.row.indexOf(this.colDelimiter, startIndex + 1);
+  }
+
+  private Boolean currentColumnHasTextQualifier(Integer qualifierIndex, Integer colDelimIndex) {
+    return qualifierIndex > -1 && qualifierIndex < colDelimIndex;
+  }
+
+  private String getTextUntil(Integer endIndex) {
+    return this.row.substring(this.currentIndex + 1, endIndex);
   }
 
   private String nextToken(String token) {
-    Integer qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
-    Integer colDelimIndex = this.row.indexOf(this.colDelimiter, this.currentIndex + 1);
+    Integer qualifierIndex = this.getPositionOfNextTextQualifierAfter(this.currentIndex);
+    Integer colDelimIndex = this.getPositionOfNextColDelimiterAfter(this.currentIndex);
+
     /*
-    System.debug('>>>000 qualifier ' + this.textQualifier);
-    System.debug('>>>000 colindex ' + colDelimIndex);
-    System.debug('>>>000 qualifierIndex ' + qualifierIndex);
-    System.debug('>>>000 currentIndex ' + this.currentIndex);
+    System.debug('*** delimIndex ' + colDelimIndex);
+    System.debug('*** qualifierIndex ' + qualifierIndex);
+    System.debug('*** currentIndex ' + this.currentIndex);
     */
     if (this.isLastChar()) {
       this.currentIndex++;
       return token;
     }
+
     if (colDelimIndex == -1) {
       token += this.row.substring(this.currentIndex + 1);
       this.currentIndex = this.rowLength;
       return token;
     }
-    if (qualifierIndex > -1 && qualifierIndex < colDelimIndex) {
-      token += this.row.substring(this.currentIndex + 1, qualifierIndex);
-      if (preserveTextQualifier) {
-        token += this.textQualifier;
-      }
+
+    if (currentColumnHasTextQualifier(qualifierIndex, colDelimIndex)) {
+      qualifierIndex = this.getPositionOfNextTextQualifierAfter(qualifierIndex);
+      token += this.getTextUntil(qualifierIndex);
       this.currentIndex = qualifierIndex + this.qualifierLength - 1;
-      qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
-      token += this.row.substring(this.currentIndex + 1, qualifierIndex);
-      this.currentIndex = qualifierIndex + this.qualifierLength - 1;
-      if (preserveTextQualifier) {
+      if (this.preserveTextQualifier) {
         token += this.textQualifier;
+      } else {
+        token = token.replaceAll(this.textQualifier, '');
       }
       return this.nextToken(token);
     }
-    token += this.row.substring(this.currentIndex + 1, colDelimIndex);
-    System.debug('>>>000 token ' + token);
+
+    token += this.getTextUntil(colDelimIndex);
     this.currentIndex = colDelimIndex + this.delimiterLength - 1;
-    System.debug('>>>000 new current index ' + this.currentIndex);
     return token;
   }
 
   public String next() {
-    return this.nextToken('');
+    String token = this.nextToken('');
+    //System.debug('*** token ' + token);
+    return token;
   }
 }
