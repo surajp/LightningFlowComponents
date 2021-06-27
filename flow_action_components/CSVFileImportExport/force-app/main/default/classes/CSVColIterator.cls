@@ -91,19 +91,23 @@ public class CSVColIterator implements Iterator<String> {
     System.debug('*** qualifierIndex ' + qualifierIndex);
     System.debug('*** currentIndex ' + this.currentIndex);
     */
+    // If we are at the end of the row, increment the cursor position by 1 and return the token
     if (this.isLastChar()) {
       this.currentIndex++;
       return token;
     }
 
+    /* If there are no more column delimiters, return the entire rest of the string and set the cursor
+     position to the end of the string */
     if (colDelimIndex == -1) {
       token += this.row.substring(this.currentIndex + 1);
       this.currentIndex = this.rowLength;
       return token;
     }
 
-    if (currentColumnHasTextQualifier(qualifierIndex, colDelimIndex)) {
-      qualifierIndex = this.getPositionOfNextTextQualifierAfter(qualifierIndex);
+    // If we come across a text qualifier, find the closing text qualifier and then find the next column delimiter
+    if (this.currentColumnHasTextQualifier(qualifierIndex, colDelimIndex)) {
+      qualifierIndex = this.getPositionOfNextTextQualifierAfter(qualifierIndex); //find closing text qualifier position
       token += this.getTextUntil(qualifierIndex);
       this.currentIndex = qualifierIndex + this.qualifierLength - 1;
       if (this.preserveTextQualifier) {
