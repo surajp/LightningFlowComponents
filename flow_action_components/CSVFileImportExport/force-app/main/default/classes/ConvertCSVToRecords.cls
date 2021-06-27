@@ -36,7 +36,9 @@ public with sharing class ConvertCSVToRecords {
 
         Response output = new Response();
         output.convertedCSVRows = new List<SObject>{};
-        CSVColIterator rowIterator = new CSVColIterator(csvStringContent).setColDelimiter('\n');
+        CSVColIterator rowIterator = new CSVColIterator(csvStringContent)
+          .setColDelimiter('\n')
+          .setPreserveTextQualifier(true);
         rowIterator.next(); //skip header row
         while (rowIterator.hasNext()) {
           String row = rowIterator.next();
@@ -51,6 +53,8 @@ public with sharing class ConvertCSVToRecords {
             String currentColValue = colIterator.next().trim();
             String currentField = fields[colIndex++];
             Schema.DisplayType currFieldType = fieldToFieldTypeMap.get(currentField);
+            if (curInput.setNullValues == null)
+              curInput.setNullValues = false;
             setSObjectField(obj, currentField, currFieldType, currentColValue, curInput.setNullValues);
           }
 

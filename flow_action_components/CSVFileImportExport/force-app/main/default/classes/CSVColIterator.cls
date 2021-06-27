@@ -14,6 +14,7 @@ public class CSVColIterator implements Iterator<String> {
   private Integer qualifierLength = 1;
   private Integer currentIndex = -1;
   private Boolean rowEndsWithDelimiter = false; //Does the row end with a delimiter i.e. is the last column blank?
+  private Boolean preserveTextQualifier = false; //Preserve text qualifiers in the output
 
   public CSVColIterator(String row) {
     this.row = row;
@@ -28,6 +29,11 @@ public class CSVColIterator implements Iterator<String> {
   public Boolean hasNext() {
     System.debug('>> currIndex ' + this.currentIndex);
     return currentIndex < this.rowLength || (this.isLastChar() && this.rowEndsWithDelimiter);
+  }
+
+  public CSVColIterator setPreserveTextQualifier(Boolean preserveTextQualifier) {
+    this.preserveTextQualifier = preserveTextQualifier;
+    return this;
   }
 
   /****
@@ -72,35 +78,41 @@ public class CSVColIterator implements Iterator<String> {
   private String nextToken(String token) {
     Integer qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
     Integer colDelimIndex = this.row.indexOf(this.colDelimiter, this.currentIndex + 1);
+    System.debug('>>>000 qualifier ' + this.textQualifier);
+    System.debug('>>>000 colindex ' + colDelimIndex);
+    System.debug('>>>000 qualifierIndex ' + qualifierIndex);
+    System.debug('>>>000 currentIndex ' + this.currentIndex);
     if (this.isLastChar()) {
       this.currentIndex++;
       return token;
-    } else if (colDelimIndex == -1) {
+    }
+    if (colDelimIndex == -1) {
       token += this.row.substring(this.currentIndex + 1);
       this.currentIndex = this.rowLength;
       return token;
     }
     if (qualifierIndex > -1 && qualifierIndex < colDelimIndex) {
       token += this.row.substring(this.currentIndex + 1, qualifierIndex);
+      if (preserveTextQualifier) {
+        token += this.textQualifier;
+      }
       this.currentIndex = qualifierIndex + this.qualifierLength - 1;
       qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
       token += this.row.substring(this.currentIndex + 1, qualifierIndex);
       this.currentIndex = qualifierIndex + this.qualifierLength - 1;
+      if (preserveTextQualifier) {
+        token += this.textQualifier;
+      }
       return this.nextToken(token);
     }
     token += this.row.substring(this.currentIndex + 1, colDelimIndex);
+    System.debug('>>>000 token ' + token);
     this.currentIndex = colDelimIndex + this.delimiterLength - 1;
+    System.debug('>>>000 new current index ' + this.currentIndex);
     return token;
   }
 
   public String next() {
-    String token = '';
-    if (this.isLastChar()) {
-      // indicates that the row ends with a delimiter (comma) and last column is blank
-      this.currentIndex++;
-    } else {
-      token = this.nextToken('');
-    }
-    return token;
+    return this.nextToken('');
   }
 }
