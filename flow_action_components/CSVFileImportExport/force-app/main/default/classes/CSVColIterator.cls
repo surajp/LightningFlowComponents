@@ -78,10 +78,12 @@ public class CSVColIterator implements Iterator<String> {
   private String nextToken(String token) {
     Integer qualifierIndex = this.row.indexOf(this.textQualifier, this.currentIndex + 1);
     Integer colDelimIndex = this.row.indexOf(this.colDelimiter, this.currentIndex + 1);
+    /*
     System.debug('>>>000 qualifier ' + this.textQualifier);
     System.debug('>>>000 colindex ' + colDelimIndex);
     System.debug('>>>000 qualifierIndex ' + qualifierIndex);
     System.debug('>>>000 currentIndex ' + this.currentIndex);
+    */
     if (this.isLastChar()) {
       this.currentIndex++;
       return token;
