@@ -101,26 +101,13 @@ public with sharing class ConvertCSVToRecords {
     return recordsList;
   }
 
-  private static List<Id> getContentDocIds(List<Request> inputs) {
-    List<Id> contentDocIds = new List<Id>();
-    for (Request req : inputs) {
-      if (req.ContentDocumentIdList != null) {
-        contentDocIds.addAll(req.ContentDocumentIdList);
-      }
-      if (req.ContentDocumentId != null) {
-        contentDocIds.add(req.ContentDocumentId);
-      }
-    }
-    return contentDocIds;
-  }
-
   private static SObjectType getSObjectType(String objectApiName) {
     return ((SObject) Type.forName(objectApiName).newInstance()).getSObjectType();
   }
 
   private static String getCSVStringContent(Id curContentDocumentId) {
     Blob csvBlobContent = getCsvContent(curContentDocumentId);
-    String csvStringContent = blobToString(csvBlobContent); //Replace with call to blobToString(csv,charset) to handle specific encoding
+    String csvStringContent = blobToString(csvBlobContent);
     return csvStringContent.replaceAll('(\r\n|\r)', '\n');
   }
 
@@ -175,12 +162,14 @@ public with sharing class ConvertCSVToRecords {
     return csvFile.VersionData;
   }
 
-  static String blobToString(Blob input) {
+  private static String blobToString(Blob input) {
     return input.toString();
   }
 
   /* Converting the CSV file input(BLOB format) to a string */
-  static String blobToString(Blob input, String inCharset) {
+  /*
+  * commenting in favor of blob.toSring() method above
+  private static String blobToString(Blob input, String inCharset) {
     String hex = EncodingUtil.convertToHex(input);
     System.assertEquals(0, hex.length() & 1);
     final Integer bytesCount = hex.length() >> 1;
@@ -189,8 +178,9 @@ public with sharing class ConvertCSVToRecords {
       bytes[i] = hex.mid(i << 1, 2);
     return EncodingUtil.urlDecode('%' + String.join(bytes, '%'), inCharset);
   }
+  */
 
-  static Object getConvertedFieldValue(Schema.DisplayType fieldType, String fieldValue) {
+  private static Object getConvertedFieldValue(Schema.DisplayType fieldType, String fieldValue) {
     Object convertedFieldValue;
     switch on
       fieldType { //Setting Field value based on the field data type
@@ -214,7 +204,7 @@ public with sharing class ConvertCSVToRecords {
   }
 
   @TestVisible
-  static Schema.DisplayType getFieldType(Map<String, SObjectField> fieldMap, String fieldApiName) {
+  private static Schema.DisplayType getFieldType(Map<String, SObjectField> fieldMap, String fieldApiName) {
     if (fieldMap.get(fieldApiName) == null) {
       throw new FlowCustomException(
         'Invalid Field Error: ' +
