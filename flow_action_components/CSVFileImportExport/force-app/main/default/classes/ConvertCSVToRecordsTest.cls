@@ -103,7 +103,7 @@ public with sharing class ConvertCSVToRecordsTest {
     return flowInputs;
   }
 
-  @isTest
+  @isTest //performance test the iterator
   private static void it_should_create_sobject_records_from_csv() {
     String csv = 'Name,Description,Rating,Industry,Site';
     Integer NUM_OF_ROWS = 4000;
@@ -118,7 +118,7 @@ public with sharing class ConvertCSVToRecordsTest {
     }
 
     Long t1 = System.now().getTime();
-    List<Account> accts = (List<Account>) ConvertCSVToRecords.getSObjectsFromCSV(csv, Account.SObjectType, false);
+    List<Account> accts = (List<Account>) ConvertCSVToRecords.getSObjectRecordsFromCsv(csv, Account.SObjectType, false);
     System.debug('>> time taken ' + (System.now().getTime() - t1));
     system.assertEquals(NUM_OF_ROWS, accts.size(), 'Not all csv rows were converted to accounts');
   }

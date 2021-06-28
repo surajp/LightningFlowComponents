@@ -10,43 +10,59 @@ public with sharing class ConvertCSVToRecords {
 
   @InvocableMethod(label='Convert CSV File to Records')
   public static Response[] convert(Request[] inputs) {
-    Response[] responseList = new List<Response>{};
-    validateFlowInputSize(inputs);
+    Response[] finalResponseList = new List<Response>{};
+    validateInputSize(inputs);
     for (Request curInput : inputs) {
-      if (curInput.contentDocumentId == null && curInput.contentDocumentIdList == null) {
-        throw new FlowCustomException(
-          'You need to provide either a single ContentDocument Id OR a list of ContentDocumentIds as inputs to this Flow action.'
-        );
-      } else {
-        if (curInput.contentDocumentIdList == null)
-          curInput.contentDocumentIdList = new List<Id>();
-        // Easiest to just combine the inputs for processing
-        if (curInput.contentDocumentId != null)
-          curInput.contentDocumentIdList.add(curInput.contentDocumentId);
-      }
-      SObjectType sObjType = getSObjectType(curInput.objectApiName);
-      for (String curContentDocumentId : curInput.contentDocumentIdList) {
-        String csvStringContent = getCSVStringContent(curContentDocumentId);
-        Response output = new Response();
-        output.convertedCSVRows = getSObjectsFromCSV(csvStringContent, sObjType, curInput.setNullValues);
-        responseList.add(output);
-      }
+      prepareInputForProcessing(curInput);
+      List<Response> responsesForSingleInput = processSingleInput(curInput);
+      finalResponseList.addAll(responsesForSingleInput);
+    }
+    return finalResponseList;
+  }
+
+  /****
+   ** @description Process a single csv file stored as a ContentDocument
+   ** @param contentDocumentId Id of the CSV file stored as a ContentDocument
+   ** @return The Response object that contains SObject records generated from the csv data
+   **/
+  private static List<Response> processSingleInput(Request curInput) {
+    SObjectType sObjType = getSObjectType(curInput.objectApiName);
+    Response[] responseList = new List<Response>{};
+    for (String curContentDocumentId : curInput.contentDocumentIdList) {
+      String csvStringContent = getCSVStringContent(curContentDocumentId);
+      Response output = new Response();
+      output.convertedCSVRows = getSObjectRecordsFromCsv(csvStringContent, sObjType, curInput.setNullValues);
+      responseList.add(output);
     }
     return responseList;
+  }
+
+  static void prepareInputForProcessing(Request curInput) {
+    if (curInput.contentDocumentId == null && curInput.contentDocumentIdList == null) {
+      throw new FlowCustomException(
+        'You need to provide either a single ContentDocument Id OR a list of ContentDocumentIds as inputs to this Flow action.'
+      );
+    } else {
+      if (curInput.contentDocumentIdList == null)
+        curInput.contentDocumentIdList = new List<Id>();
+      // Easiest to just combine the inputs for processing
+      if (curInput.contentDocumentId != null)
+        curInput.contentDocumentIdList.add(curInput.contentDocumentId);
+    }
   }
 
   /****
    ** @description Validate that this action was called from a screen flow
    ** @param flowInputList list of input requests to the flow
    **/
-  private static void validateFlowInputSize(List<Request> flowInputList) {
+  private static void validateInputSize(List<Request> flowInputList) {
     if (flowInputList.size() > 1) {
       throw new FlowCustomException('This action is only supported in Screen flows. ');
     }
   }
 
   @TestVisible
-  private static List<SObject> getSObjectsFromCSV(
+  private static List<SObject> getSObjectRecordsFromCsv(
     String csvStringContent,
     SObjectType sObjType,
     Boolean setNullValues
