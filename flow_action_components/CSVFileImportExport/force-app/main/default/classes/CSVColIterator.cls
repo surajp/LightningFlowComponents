@@ -19,7 +19,7 @@ public class CSVColIterator implements Iterator<String> {
 
   public CSVColIterator(String row) {
     this.row = row.replace('\\' + this.textQualifier, textDelimiterReplacementString);
-    this.rowLength = row.length();
+    this.rowLength = this.row.length();
     this.checkIfRowEndsWithDelimiter();
   }
 

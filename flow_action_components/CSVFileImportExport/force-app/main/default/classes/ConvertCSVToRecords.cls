@@ -78,14 +78,14 @@ public with sharing class ConvertCSVToRecords {
       .setColDelimiter('\n')
       .setPreserveTextQualifier(true);
     rowIterator.next(); //skip header row
-    SObject[] objList = new List<SObject>{};
+    List<SObject> recordsList = new List<SObject>{};
     while (rowIterator.hasNext()) {
       String row = rowIterator.next();
       if (String.isBlank(row)) {
         continue;
       }
       System.debug('>>> row ' + row);
-      SObject obj = sObjType.newSObject();
+      SObject record = sObjType.newSObject();
       CSVColIterator colIterator = new CSVColIterator(row);
       Integer colIndex = 0;
       while (colIterator.hasNext()) {
@@ -94,11 +94,11 @@ public with sharing class ConvertCSVToRecords {
         Schema.DisplayType currFieldType = fieldToFieldTypeMap.get(currentField);
         if (setNullValues == null)
           setNullValues = false;
-        setSObjectField(obj, currentField, currFieldType, currentColValue, setNullValues);
+        setSObjectField(record, currentField, currFieldType, currentColValue, setNullValues);
       }
-      objList.add(obj);
+      recordsList.add(record);
     }
-    return objList;
+    return recordsList;
   }
 
   private static List<Id> getContentDocIds(List<Request> inputs) {
