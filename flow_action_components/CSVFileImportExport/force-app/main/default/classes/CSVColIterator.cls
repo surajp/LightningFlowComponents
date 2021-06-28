@@ -3,6 +3,7 @@
 *** @author Suraj Pillai
 *** @date 06/2021
 *** @description A custom iterator for iterating over a single row of comma-separated values. Handles text qualifiers if present
+*** If a column contains a text qualifier (Eg: double-quotes), escape it using double backslashes. (Eg: "Universal \\"Containers\\"")
 *** 
 **/
 public class CSVColIterator implements Iterator<String> {
@@ -24,7 +25,7 @@ public class CSVColIterator implements Iterator<String> {
   }
 
   private void checkIfRowEndsWithDelimiter() {
-    this.rowEndsWithDelimiter = row.substring(row.length() - 1).equals(this.colDelimiter);
+    this.rowEndsWithDelimiter = row.substring(this.rowLength - 1).equals(this.colDelimiter);
   }
 
   public Boolean hasNext() {
@@ -71,7 +72,7 @@ public class CSVColIterator implements Iterator<String> {
     return this.row.indexOf(this.textQualifier, startIndex + 1);
   }
 
-  private Integer getPositionOfNextColDelimiterAfter(integer startIndex) {
+  private Integer getPositionOfNextColDelimiterAfter(Integer startIndex) {
     return this.row.indexOf(this.colDelimiter, startIndex + 1);
   }
 
