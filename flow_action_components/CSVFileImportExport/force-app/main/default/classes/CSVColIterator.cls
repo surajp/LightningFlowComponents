@@ -15,9 +15,10 @@ public class CSVColIterator implements Iterator<String> {
   private Integer currentIndex = -1;
   private Boolean rowEndsWithDelimiter = false; //Does the row end with a delimiter i.e. is the last column blank?
   private Boolean preserveTextQualifier = false; //Preserve text qualifiers in the output
+  private static String textDelimiterReplacementString = '----';
 
   public CSVColIterator(String row) {
-    this.row = row;
+    this.row = row.replace('\\' + this.textQualifier, textDelimiterReplacementString);
     this.rowLength = row.length();
     this.checkIfRowEndsWithDelimiter();
   }
@@ -126,6 +127,6 @@ public class CSVColIterator implements Iterator<String> {
   public String next() {
     String token = this.nextToken('');
     //System.debug('*** token ' + token);
-    return token;
+    return token.replace(textDelimiterReplacementString, this.textQualifier);
   }
 }
